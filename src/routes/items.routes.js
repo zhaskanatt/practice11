@@ -1,6 +1,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const Item = require("../models/Item");
+const apiKeyAuth = require("../middleware/apiKeyAuth");
+
 
 const router = express.Router();
 
@@ -25,7 +27,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // POST /api/items
-router.post("/", async (req, res) => {
+router.post("/", apiKeyAuth, async (req, res) => {
   const { name, description, price } = req.body;
 
   if (!name || String(name).trim().length === 0) {
@@ -42,7 +44,7 @@ router.post("/", async (req, res) => {
 });
 
 // PUT /api/items/:id
-router.put("/:id", async (req, res) => {
+router.put("/:id", apiKeyAuth, async (req, res) => {
   const { id } = req.params;
 
   if (!mongoose.isValidObjectId(id)) {
@@ -65,7 +67,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE /api/items/:id
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", apiKeyAuth, async (req, res) => {
   const { id } = req.params;
 
   if (!mongoose.isValidObjectId(id)) {
@@ -79,3 +81,28 @@ router.delete("/:id", async (req, res) => {
 });
 
 module.exports = router;
+
+
+router.patch("/:id", apiKeyAuth, async (req, res) => {
+  const { id } = req.params;
+  const mongoose = require("mongoose");
+  const Item = require("../models/Item");
+
+  if (!mongoose.isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid item id" });
+  }
+
+  const update = {};
+  if (req.body.name !== undefined) update.name = String(req.body.name).trim();
+  if (req.body.description !== undefined) update.description = req.body.description;
+  if (req.body.price !== undefined) update.price = req.body.price;
+
+  const updated = await Item.findByIdAndUpdate(id, update, {
+    new: true,
+    runValidators: true
+  });
+
+  if (!updated) return res.status(404).json({ message: "Item not found" });
+
+  return res.json(updated);
+});
